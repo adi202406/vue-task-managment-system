@@ -34,108 +34,138 @@ const iconPaths = {
 </script>
 
 <template>
-  <div class="auth-screen min-h-screen bg-[#030712] px-4 py-5 text-white sm:px-6 lg:px-8">
-    <div class="auth-frame mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-[1540px] overflow-hidden rounded-[32px] border border-white/10 bg-[rgba(3,7,18,0.86)] shadow-[0_24px_120px_rgba(0,0,0,0.55)] lg:grid-cols-[1.05fr_0.95fr]">
-      <section class="relative hidden overflow-hidden border-r border-white/10 p-10 lg:flex lg:flex-col xl:p-16">
+  <div class="auth-screen min-h-[100dvh] w-full bg-[#030712] sm:p-4 text-white flex items-center justify-center">
+    <div
+      class="auth-frame mx-auto flex w-full min-h-[100dvh] sm:min-h-[calc(100dvh-32px)] sm:max-h-[900px] max-w-[1700px] overflow-hidden sm:rounded-[30px] border-0 sm:border border-white/10 bg-[#030712] sm:bg-[rgba(3,7,18,0.92)] shadow-none sm:shadow-[0_24px_100px_rgba(0,0,0,0.45)]">
+
+      <!-- LEFT -->
+      <section
+        class="relative hidden w-[54%] overflow-hidden border-r border-white/10 p-4 xl:p-8 2xl:p-10 lg:flex lg:flex-col justify-center">
         <div class="auth-glow"></div>
+
+        <!-- Logo -->
         <div class="relative z-10 flex items-center gap-4">
-          <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1d4ed8]/20 ring-1 ring-[#3b82f6]/35">
-            <svg viewBox="0 0 40 40" class="h-7 w-7 text-[#2f6bff]" fill="currentColor" aria-hidden="true">
+          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1d4ed8]/20 ring-1 ring-[#3b82f6]/35">
+            <svg viewBox="0 0 40 40" class="h-7 w-7 text-[#2f6bff]" fill="currentColor">
               <path d="M8 9h7.2l9.2 12.44V9H32v22h-7.2L15.6 18.56V31H8V9Z" />
             </svg>
           </div>
-          <span class="text-4xl font-semibold tracking-[0.08em] text-white">NEXORA</span>
+
+          <span class="text-3xl xl:text-4xl font-semibold tracking-[0.08em]">
+            NEXORA
+          </span>
         </div>
 
-        <div class="relative z-10 mt-16 max-w-[720px] xl:mt-20">
-          <h1 class="text-[4.6rem] font-black uppercase leading-[0.9] tracking-[-0.06em] text-white xl:text-[6rem]">
+        <!-- HERO -->
+        <div class="relative z-10 mt-6 xl:mt-8 max-w-[650px]">
+          <h1 class="font-black uppercase leading-[0.9] tracking-[-0.06em]
+            text-[2.5rem]
+            xl:text-[3.5rem]
+            2xl:text-[4rem]">
             Focus.
             <span class="block">Execute.</span>
+
             <span class="block bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-white bg-clip-text text-transparent">
               Deliver Impact.
             </span>
           </h1>
 
-          <p class="mt-8 max-w-xl text-2xl leading-10 text-slate-300">
-            Nexora is the task management platform that helps teams plan smarter, execute faster, and ship what matters.
+          <p class="mt-4 max-w-[520px] text-base xl:text-lg leading-relaxed text-slate-300">
+            Nexora helps teams plan smarter, execute faster, and ship what matters most.
           </p>
 
-          <div class="mt-10 space-y-5">
-            <div
-              v-for="item in featureItems"
-              :key="item.label"
-              class="flex items-center gap-4 text-2xl text-slate-200"
-            >
-              <span class="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
-                <svg viewBox="0 0 24 24" class="h-6 w-6 text-slate-200" fill="currentColor" aria-hidden="true">
+          <!-- FEATURES -->
+          <div class="mt-5 space-y-3">
+            <div v-for="item in featureItems" :key="item.label"
+              class="flex items-center gap-3 text-base xl:text-lg text-slate-200">
+              <span
+                class="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                <svg viewBox="0 0 24 24" class="h-5 w-5 text-slate-200" fill="currentColor">
                   <path :d="iconPaths[item.icon]" />
                 </svg>
               </span>
+
               <span>{{ item.label }}</span>
             </div>
           </div>
         </div>
 
+        <!-- Background -->
         <div class="auth-planet"></div>
         <div class="auth-prism"></div>
         <div class="auth-dots"></div>
 
-        <div class="relative z-10 mt-auto rounded-[30px] border border-white/10 bg-[rgba(10,16,30,0.8)] p-7 shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
-          <div class="text-7xl font-bold leading-none text-[#2f6bff]">"</div>
-          <p class="mt-2 max-w-3xl text-2xl leading-10 text-slate-200">
-            Nexora gave us the clarity we were missing. Our team is faster, more focused, and actually enjoys the way we work now.
+        <!-- TESTIMONIAL -->
+        <div class="relative z-10 mt-6 xl:mt-8 rounded-[20px] border border-white/10 bg-[rgba(10,16,30,0.75)] p-4 xl:p-5">
+          <div class="text-3xl xl:text-4xl font-bold leading-none text-[#2f6bff]">
+            "
+          </div>
+
+          <p class="mt-2 text-base xl:text-lg leading-snug text-slate-200">
+            Nexora gave us the clarity we were missing. Our team is faster and more focused.
           </p>
 
-          <div class="mt-8 flex items-end justify-between gap-6">
-            <div class="flex items-center gap-5">
-              <div class="h-20 w-20 rounded-full bg-[radial-gradient(circle_at_35%_30%,#f4d6c2,#7a5141_78%)]"></div>
+          <div class="mt-4 flex items-center justify-between gap-5">
+            <div class="flex items-center gap-3">
+              <div
+                class="h-10 w-10 xl:h-12 xl:w-12 rounded-full bg-[radial-gradient(circle_at_35%_30%,#f4d6c2,#7a5141_78%)]">
+              </div>
+
               <div>
-                <p class="text-2xl font-medium text-white">Jackson Lee</p>
-                <p class="text-lg text-slate-400">Head of Product, Orbit</p>
-                <p class="mt-3 text-2xl font-semibold text-white">orbit</p>
+                <p class="text-base xl:text-lg font-medium text-white">
+                  Jackson Lee
+                </p>
+
+                <p class="text-xs xl:text-sm text-slate-400">
+                  Head of Product, Orbit
+                </p>
               </div>
             </div>
 
-            <div class="flex gap-3">
-              <span class="h-3 w-3 rounded-full bg-[#2563eb]"></span>
-              <span class="h-3 w-3 rounded-full bg-white/15"></span>
-              <span class="h-3 w-3 rounded-full bg-white/15"></span>
-              <span class="h-3 w-3 rounded-full bg-white/15"></span>
+            <div class="flex gap-2">
+              <span class="h-2.5 w-2.5 rounded-full bg-[#2563eb]"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-white/15"></span>
+              <span class="h-2.5 w-2.5 rounded-full bg-white/15"></span>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="relative flex min-h-full items-center justify-center overflow-hidden px-4 py-8 sm:px-8 lg:px-10 xl:px-16">
+      <!-- RIGHT -->
+      <section class="relative flex w-full h-full lg:w-[46%] overflow-y-auto px-4 py-8 sm:px-6 sm:py-12 xl:px-8">
         <div class="panel-noise"></div>
 
-        <div class="relative z-10 w-full max-w-[640px] rounded-[32px] border border-white/8 bg-[rgba(6,11,22,0.66)] p-5 backdrop-blur-xl sm:p-8 xl:p-10">
-          <div class="mx-auto flex max-w-[560px] rounded-[22px] border border-white/10 bg-[rgba(10,16,28,0.9)] p-1.5">
-            <RouterLink
-              to="/login"
-              class="flex-1 rounded-[18px] px-6 py-4 text-center text-xl transition"
-              :class="isLogin ? 'bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white shadow-[0_16px_40px_rgba(37,99,235,0.3)]' : 'text-slate-400 hover:text-white'"
-            >
+        <div
+          class="relative z-10 w-full max-w-[460px] m-auto rounded-[20px] sm:rounded-[24px] border border-white/10 bg-[rgba(6,11,22,0.6)] sm:bg-[rgba(6,11,22,0.7)] p-6 sm:p-8 lg:p-10 backdrop-blur-xl">
+          <!-- Tabs -->
+          <div class="mx-auto flex max-w-[480px] rounded-[14px] sm:rounded-[20px] border border-white/10 bg-[rgba(10,16,28,0.9)] p-1.5">
+            <RouterLink to="/login" class="flex-1 rounded-[10px] sm:rounded-[16px] px-3 py-2 sm:px-5 sm:py-2.5 text-center text-sm sm:text-base font-medium transition"
+              :class="isLogin
+                ? 'bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white'
+                : 'text-slate-400 hover:text-white'">
               Sign in
             </RouterLink>
 
-            <RouterLink
-              to="/register"
-              class="flex-1 rounded-[18px] px-6 py-4 text-center text-xl transition"
-              :class="!isLogin ? 'bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white shadow-[0_16px_40px_rgba(37,99,235,0.3)]' : 'text-slate-400 hover:text-white'"
-            >
+            <RouterLink to="/register"
+              class="flex-1 rounded-[10px] sm:rounded-[16px] px-3 py-2 sm:px-5 sm:py-2.5 text-center text-sm sm:text-base font-medium transition" :class="!isLogin
+                ? 'bg-gradient-to-r from-[#2563eb] to-[#1d4ed8] text-white shadow-md'
+                : 'text-slate-400 hover:text-white'">
               Create account
             </RouterLink>
           </div>
 
-          <div class="mx-auto mt-12 max-w-[560px]">
-            <div class="text-center">
-              <h2 class="text-4xl font-semibold text-white sm:text-5xl">{{ title }}</h2>
-              <p class="mt-4 text-xl text-slate-400">{{ subtitle }}</p>
-            </div>
+          <!-- Title -->
+          <div class="mx-auto mt-6 sm:mt-8 max-w-[480px] text-center">
+            <h2 class="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
+              {{ title }}
+            </h2>
 
-            <slot />
+            <p class="mt-2 sm:mt-3 text-sm sm:text-base text-slate-400">
+              {{ subtitle }}
+            </p>
           </div>
+
+          <slot />
         </div>
       </section>
     </div>
@@ -221,6 +251,22 @@ const iconPaths = {
     right: 1%;
     bottom: 19%;
     width: 50%;
+  }
+}
+
+@media (max-width: 1536px) {
+  .auth-planet {
+    width: 56%;
+  }
+}
+
+@media (max-width: 1280px) {
+  .auth-prism {
+    opacity: 0.45;
+  }
+
+  .auth-dots {
+    opacity: 0.2;
   }
 }
 </style>
