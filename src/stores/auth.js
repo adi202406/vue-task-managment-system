@@ -88,5 +88,11 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       this.initialized = true
     },
+
+    updateUser(user) {
+      this.user = user
+      const isRemembered = localStorage.getItem('auth_token') !== null
+      persistAuthSession({ token: this.token, user }, isRemembered)
+    },
   },
 })
