@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AuthLayout from '../components/AuthLayout.vue'
+import { api } from '../lib/axios'
 import { getGoogleAuthUrl } from '../services/auth'
 import { useAuthStore } from '../stores/auth'
 
@@ -68,10 +69,18 @@ onMounted(async () => {
     isProcessingOAuth.value = true
 
     try {
-      authStore.captureTokenLogin(embeddedPayload)
+      const token = embeddedPayload.token || embeddedPayload.access_token
+
+      if (token) {
+        const { data } = await api.get('/user', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        authStore.user = data?.data ?? data
+      } else {
+        await authStore.fetchUser()
+      }
 
       const target = resolveRedirectTarget()
-
       await router.replace(target)
     } catch (error) {
       errorMessage.value =
@@ -139,7 +148,7 @@ function continueWithGoogle() {
         </h1>
 
         <p class="text-sm leading-6 text-slate-300">
-          Token sedang ditangkap dan sesi login kamu sedang disiapkan.
+          Sesi sedang disiapkan.
         </p>
       </div>
     </div>

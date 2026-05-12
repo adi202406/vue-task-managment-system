@@ -1,98 +1,74 @@
 import { defineStore } from 'pinia'
 
 import {
-  extractToken,
-  extractUser,
+  fetchCsrfCookie,
+  fetchUser as fetchUserApi,
   getWorkspaces,
   login as loginRequest,
+  logout as logoutRequest,
   register as registerRequest,
 } from '../services/auth'
-import { clearAuthSession, getStoredToken, getStoredUser, persistAuthSession } from '../services/auth-storage'
-
-function parseRememberPreference(value, fallback = true) {
-  if (typeof value === 'boolean') {
-    return value
-  }
-
-  if (typeof value === 'string') {
-    return !['false', '0', 'no'].includes(value.toLowerCase())
-  }
-
-  return fallback
-}
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: getStoredToken(),
-    user: getStoredUser(),
+    user: null,
     initialized: false,
   }),
 
   getters: {
-    isAuthenticated: (state) => Boolean(state.token),
+    isAuthenticated: (state) => Boolean(state.user),
   },
 
   actions: {
-    hydrate() {
-      this.token = getStoredToken()
-      this.user = getStoredUser()
-      this.initialized = true
-    },
-
-    applySession({ token, user }, remember = true) {
-      persistAuthSession({ token, user }, remember)
-      this.token = token || null
-      this.user = user || null
-      this.initialized = true
-    },
-
-    captureTokenLogin(payload, remember = true) {
-      const token = extractToken(payload)
-
-      if (!token) {
-        throw new Error('Token login tidak ditemukan.')
+    async hydrate() {
+      try {
+        const data = await fetchUserApi()
+        this.user = data?.user ?? data
+      } catch {
+        this.user = null
+      } finally {
+        this.initialized = true
       }
-
-      this.applySession(
-        {
-          token,
-          user: extractUser(payload),
-        },
-        parseRememberPreference(remember)
-      )
     },
 
     async login(credentials) {
-      const payload = await loginRequest(credentials)
-      this.captureTokenLogin(payload, credentials?.remember ?? true)
-      return payload
+      await fetchCsrfCookie()
+      await loginRequest(credentials)
+      await this.fetchUser()
     },
 
-    async register(payload, remember = true) {
+    async register(payload) {
       const response = await registerRequest(payload)
-
-      if (extractToken(response)) {
-        this.captureTokenLogin(response, remember)
-      }
-
+      await this.fetchUser()
       return response
     },
 
-    async loadWorkspaces() {
-      return getWorkspaces()
+    async fetchUser() {
+      try {
+        const data = await fetchUserApi()
+        this.user = data?.user ?? data
+      } catch {
+        this.user = null
+      }
     },
 
-    logout() {
-      clearAuthSession()
-      this.token = null
+    async logout() {
+      try {
+        await logoutRequest()
+      } catch {
+        // ignore
+      }
+
       this.user = null
       this.initialized = true
     },
 
     updateUser(user) {
       this.user = user
-      const isRemembered = localStorage.getItem('auth_token') !== null
-      persistAuthSession({ token: this.token, user }, isRemembered)
+    },
+
+    async loadWorkspaces() {
+      return getWorkspaces()
     },
   },
 })

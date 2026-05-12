@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { api } from '../lib/axios'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
@@ -15,20 +16,10 @@ function getHashParams(hash) {
   return Object.fromEntries(new URLSearchParams(normalizedHash))
 }
 
-/**
- * Laravel kadang mengirim redirect URL yang malformed:
- *   /login?redirect=/workspaces?token=xxx
- * sehingga `token` ikut masuk ke nilai `route.query.redirect`.
- * Fungsi ini mengekstrak token dari semua kemungkinan lokasi di URL.
- */
 function extractPayloadFromUrl() {
-  // 1. Coba dari hash fragment (#token=... atau #access_token=...)
   const hashParams = getHashParams(route.hash)
-
-  // 2. Query params langsung (?token=... atau ?access_token=...)
   const queryParams = { ...route.query }
 
-  // 3. Token tersembunyi di dalam nilai redirect (?redirect=/workspaces?token=xxx)
   let embeddedParams = {}
   const redirectValue = route.query.redirect
   if (typeof redirectValue === 'string' && redirectValue.includes('?')) {
@@ -40,7 +31,6 @@ function extractPayloadFromUrl() {
 }
 
 function resolveRedirectTarget(payload) {
-  // Jika redirect mengandung token yang embedded, ambil path-nya saja
   const redirectValue = payload.redirect ?? route.query.redirect
   if (typeof redirectValue === 'string' && redirectValue) {
     const cleanPath = redirectValue.includes('?')
@@ -55,14 +45,28 @@ function resolveRedirectTarget(payload) {
 
 async function captureToken() {
   const payload = extractPayloadFromUrl()
+  const token = payload.token || payload.access_token
 
-  if (!payload.token && !payload.access_token) {
+  if (!token) {
+    try {
+      await authStore.fetchUser()
+      if (authStore.isAuthenticated) {
+        await router.replace(resolveRedirectTarget(payload))
+        return
+      }
+    } catch {
+      // fall through
+    }
+
     errorMessage.value = 'Token login tidak ditemukan pada callback.'
     return
   }
 
   try {
-    authStore.captureTokenLogin(payload, payload.remember)
+    const { data } = await api.get('/user', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    authStore.user = data?.data ?? data
     const target = resolveRedirectTarget(payload)
     await router.replace(target)
   } catch (error) {
@@ -94,7 +98,7 @@ onMounted(() => {
         <div class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-white/15 border-t-cyan-300"></div>
         <h1 class="text-2xl font-semibold">Memproses login</h1>
         <p class="text-sm leading-6 text-slate-300">
-          Token sedang ditangkap dan sesi login kamu sedang disiapkan.
+          Sesi sedang disiapkan.
         </p>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AuthLayout from '../components/AuthLayout.vue'
-import { extractToken, getGoogleAuthUrl } from '../services/auth'
+import { getGoogleAuthUrl } from '../services/auth'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -39,14 +39,14 @@ async function handleSubmit() {
   isSubmitting.value = true
 
   try {
-    const payload = await authStore.register({
+    await authStore.register({
       name: form.value.name,
       email: form.value.email,
       password: form.value.password,
       password_confirmation: form.value.password,
-    }, true)
+    })
 
-    if (extractToken(payload)) {
+    if (authStore.isAuthenticated) {
       await router.push('/workspaces')
       return
     }

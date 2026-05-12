@@ -44,11 +44,11 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore(pinia)
 
   if (!authStore.initialized) {
-    authStore.hydrate()
+    await authStore.hydrate()
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {

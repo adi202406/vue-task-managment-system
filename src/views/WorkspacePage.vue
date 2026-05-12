@@ -49,7 +49,7 @@ async function loadWorkspaces() {
     workspaces.value     = normalizeWorkspaces(payload)
   } catch (error) {
     if (error instanceof Error && error.status === 401) {
-      authStore.logout()
+      await authStore.logout()
       await router.push('/login')
       return
     }
@@ -60,7 +60,7 @@ async function loadWorkspaces() {
 }
 
 async function handleLogout() {
-  authStore.logout()
+  await authStore.logout()
   await router.push('/login')
 }
 
