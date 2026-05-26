@@ -1,13 +1,13 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, onBeforeRouteUpdate } from 'vue-router'
 
 import DashboardSidebar from '../components/dashboard/DashboardSidebar.vue'
 import IconGlyph from '../components/dashboard/IconGlyph.vue'
 import TopNavbar from '../components/dashboard/TopNavbar.vue'
 import UserProfilePanel from '../components/UserProfilePanel.vue'
-import LabelList from './labels/LabelList.vue'
 import { useAuthStore } from '../stores/auth'
+import { getInitials } from '../utils/helpers'
 import { useWorkspaceDashboardStore } from '../stores/workspaceDashboard'
 
 const router = useRouter()
@@ -169,6 +169,12 @@ onMounted(() => {
   dashboardStore.setCurrentUser(authStore.user)
   dashboardStore.loadWorkspaceList()
 })
+
+onBeforeRouteUpdate((to, from) => {
+  if (to.path !== from.path) {
+    dashboardStore.loadWorkspaceList()
+  }
+})
 </script>
 
 <template>
@@ -269,7 +275,7 @@ onMounted(() => {
                         class="-ml-1 first:ml-0 grid h-8 w-8 place-items-center overflow-hidden rounded-full border-2 border-[#071124] bg-gradient-to-br from-sky-300 to-blue-700 text-[10px] font-bold text-white"
                       >
                         <img v-if="member.avatar" :src="member.avatar" :alt="member.name" class="h-full w-full object-cover" />
-                        <span v-else>{{ member.name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase() }}</span>
+                        <span v-else>{{ getInitials(member.name) }}</span>
                       </span>
                       <span v-if="card.members > 5" class="ml-2 rounded-full bg-white/7 px-3 py-1 text-xs text-slate-300">+{{ card.members - 5 }}</span>
                     </span>
@@ -312,9 +318,6 @@ onMounted(() => {
             </div>
           </div>
 
-          <div v-else-if="activePanel === 'labels'" class="px-4 py-8 sm:px-6 lg:px-8">
-            <LabelList />
-          </div>
         </main>
       </div>
 

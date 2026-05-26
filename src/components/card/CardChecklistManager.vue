@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import IconGlyph from '../dashboard/IconGlyph.vue'
-import { useWorkspaceDashboardStore } from '../../stores/workspaceDashboard'
+import { useWorkspaceDashboardStore } from '@/stores/workspaceDashboard'
 
 const props = defineProps({
   boardId: { type: [Number, String], required: true },
@@ -53,7 +53,9 @@ async function addChecklist() {
       position: cardChecklists.value.length + 1,
     })
     newChecklistTitle.value = ''
-  } catch { }
+  } catch (error) {
+    console.error('Failed to create checklist:', error)
+  }
 }
 
 function startEditChecklist(checklist) {
@@ -67,7 +69,9 @@ async function saveChecklistTitle(checklistId) {
     await dashboardStore.updateChecklist(props.boardId, props.cardId, checklistId, {
       title: editingTitle.value.trim(),
     })
-  } catch { }
+  } catch (error) {
+    console.error('Failed to update checklist:', error)
+  }
   editingChecklistId.value = null
 }
 
@@ -78,7 +82,9 @@ function cancelEditChecklist() {
 async function deleteChecklist(checklistId) {
   try {
     await dashboardStore.deleteChecklist(props.boardId, props.cardId, checklistId)
-  } catch { }
+  } catch (error) {
+    console.error('Failed to delete checklist:', error)
+  }
 }
 
 function getNewItemRef(checklistId) {
@@ -98,7 +104,9 @@ async function addItem(checklistId) {
       is_completed: false,
     })
     newItemContent.value[checklistId] = ''
-  } catch { }
+  } catch (error) {
+    console.error('Failed to add checklist item:', error)
+  }
 }
 
 async function toggleItem(checklistId, item, checked) {
@@ -108,13 +116,17 @@ async function toggleItem(checklistId, item, checked) {
       position: item.position,
       is_completed: checked,
     })
-  } catch { }
+  } catch (error) {
+    console.error('Failed to toggle checklist item:', error)
+  }
 }
 
 async function deleteItem(checklistId, itemId) {
   try {
     await dashboardStore.deleteChecklistItem(props.boardId, props.cardId, checklistId, itemId)
-  } catch { }
+  } catch (error) {
+    console.error('Failed to delete checklist item:', error)
+  }
 }
 </script>
 

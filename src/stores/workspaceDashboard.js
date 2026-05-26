@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { getInitials } from '../utils/helpers'
+import { ACCENT_COLORS, BOARD_COLORS, DEFAULT_TEXTS, TIME } from '../constants'
 
 import {
   createBoard as createBoardApi,
@@ -32,6 +34,7 @@ import {
 import {
   attachLabelToCard as attachLabelToCardApi,
   detachLabelFromCard as detachLabelFromCardApi,
+  getCardLabels as getCardLabelsApi,
 } from '../services/card-labels'
 import {
   assignUserToCard as assignUserToCardApi,
@@ -49,6 +52,12 @@ import {
   bulkUpdateChecklistItems as bulkUpdateChecklistItemsApi,
   updateChecklistItem as updateChecklistItemApi,
 } from '../services/checklist-items'
+import {
+  getStatuses as getStatusesApi,
+  createStatus as createStatusApi,
+  updateStatus as updateStatusApi,
+  deleteStatus as deleteStatusApi,
+} from '../services/statuses'
 
 function unwrap(payload) {
   return payload?.data?.data ?? payload?.data ?? payload
@@ -62,24 +71,21 @@ function asArray(value) {
 }
 
 function textDate(value) {
-  if (!value) return 'No activity yet'
+  if (!value) return DEFAULT_TEXTS.NO_ACTIVITY
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
 
   const diff = Date.now() - date.getTime()
-  const minute = 60 * 1000
-  const hour = 60 * minute
-  const day = 24 * hour
 
-  if (diff < hour) return `${Math.max(1, Math.round(diff / minute))} minutes ago`
-  if (diff < day) return `${Math.round(diff / hour)} hours ago`
-  if (diff < day * 7) return `${Math.round(diff / day)} days ago`
+  if (diff < TIME.HOUR) return `${Math.max(1, Math.round(diff / TIME.MINUTE))} minutes ago`
+  if (diff < TIME.DAY) return `${Math.round(diff / TIME.HOUR)} hours ago`
+  if (diff < TIME.WEEK) return `${Math.round(diff / TIME.DAY)} days ago`
 
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 function dueLabel(value) {
-  if (!value) return 'No due date'
+  if (!value) return DEFAULT_TEXTS.NO_DUE_DATE
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
 
@@ -91,16 +97,6 @@ function dueLabel(value) {
   if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow'
 
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-function initials(name, fallback = '?') {
-  return (name || fallback)
-    .split(' ')
-    .filter(Boolean)
-    .map((word) => word[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
 }
 
 function boardTitle(board, index = 0) {
@@ -145,6 +141,7 @@ function cardPayload(payload = {}) {
   if (payload.description !== undefined) data.description = payload.description || null
   if (payload.due_date !== undefined) data.due_date = payload.due_date || null
   if (payload.position !== undefined && payload.position !== null && payload.position !== '') data.position = Number(payload.position)
+  if (payload.status_id !== undefined) data.status_id = payload.status_id
   return data
 }
 
@@ -169,7 +166,7 @@ function boardMembers(board) {
     id: member?.id,
     name: member?.name || member?.email || 'Member',
     avatar: member?.avatar,
-    initials: initials(member?.name || member?.email, 'MB'),
+    initials: getInitials(member?.name || member?.email, 'MB'),
   }))
 }
 
@@ -198,13 +195,13 @@ function workspaceMembers(workspace) {
 function workspaceCard(workspace, index = 0) {
   const members = workspaceMembers(workspace)
   const name = workspace?.title || workspace?.name || workspace?.slug || `Workspace ${index + 1}`
-  const accents = ['#6d5dfc', '#10b981', '#f97316', '#ec4899', '#3b82f6', '#14b8a6', '#8b5cf6', '#eab308']
+  const accents = ACCENT_COLORS
 
   return {
     id: workspace?.id ?? workspace?.uuid ?? workspace?.slug ?? name,
     slug: workspace?.slug ?? workspace?.id,
     name,
-    description: workspace?.description || workspace?.notes || 'Manage boards, tasks, and team collaboration.',
+    description: workspace?.description || workspace?.notes || DEFAULT_TEXTS.WORKSPACE_DESCRIPTION,
     bannerImage: workspace?.banner_image || workspace?.bannerImage || '',
     bannerImagePublicId: workspace?.banner_image_public_id || workspace?.bannerImagePublicId || '',
     visibility: workspace?.visibility || workspace?.type || 'private',
@@ -213,7 +210,7 @@ function workspaceCard(workspace, index = 0) {
     boards: workspace?.boards_count ?? workspace?.board_count ?? workspace?.boards?.length ?? 0,
     owner: workspace?.owner?.name || workspace?.owner_name || 'Workspace Owner',
     accent: workspace?.color || accents[index % accents.length],
-    initial: initials(name, 'W').slice(0, 1),
+    initial: getInitials(name, 'W').slice(0, 1),
     raw: workspace,
   }
 }
@@ -222,7 +219,7 @@ function normalizeBoard(board, index = 0) {
   const title = boardTitle(board, index)
   const members = boardMembers(board)
   const cards = boardCards(board)
-  const colors = ['#2f7dff', '#8b5cf6', '#60a5fa', '#22d3ee', '#fb923c', '#84cc16']
+  const colors = BOARD_COLORS
 
   return {
     id: board?.id ?? board?.uuid ?? title,
@@ -311,7 +308,7 @@ function normalizeActivityFromBoard(board) {
       person: user?.name || item?.user_name || item?.actor_name || 'Workspace member',
       action: item?.description || item?.action || item?.message || `updated "${board.title}"`,
       time: textDate(item?.created_at || item?.updated_at),
-      avatar: initials(user?.name || item?.user_name || item?.actor_name, 'WM'),
+      avatar: getInitials(user?.name || item?.user_name || item?.actor_name, 'WM'),
       avatarUrl: user?.avatar || null,
       board: board.title,
     })
@@ -325,7 +322,7 @@ function normalizeActivityFromBoard(board) {
         person: user?.name || comment?.user_name || 'Workspace member',
         action: `commented on "${cardTitle(card, cardIndex)}"`,
         time: textDate(comment?.created_at || comment?.updated_at),
-        avatar: initials(user?.name || comment?.user_name, 'WM'),
+        avatar: getInitials(user?.name || comment?.user_name, 'WM'),
         avatarUrl: user?.avatar || null,
         board: board.title,
       })
@@ -338,7 +335,7 @@ function normalizeActivityFromBoard(board) {
       person: 'Board activity',
       action: `updated "${board.title}"`,
       time: board.updated,
-      avatar: initials(board.title, 'BD'),
+      avatar: getInitials(board.title, 'BD'),
       avatarUrl: null,
       board: board.title,
     })
@@ -361,6 +358,9 @@ export const useWorkspaceDashboardStore = defineStore('workspaceDashboard', {
     labels: [],
     isLoadingLabels: false,
     labelError: '',
+    statuses: [],
+    isLoadingStatuses: false,
+    statusError: '',
     checklists: [],
     isLoadingChecklists: false,
     errorMessage: '',
@@ -471,6 +471,28 @@ export const useWorkspaceDashboardStore = defineStore('workspaceDashboard', {
   },
 
   actions: {
+    reset() {
+      this.workspaces = []
+      this.workspace = null
+      this.boards = []
+      this.selectedSlug = ''
+      this.currentUserId = null
+      this.isLoading = false
+      this.isInviting = false
+      this.isAcceptingInvitation = false
+      this.removingMemberId = null
+      this.labels = []
+      this.isLoadingLabels = false
+      this.labelError = ''
+      this.statuses = []
+      this.isLoadingStatuses = false
+      this.statusError = ''
+      this.checklists = []
+      this.isLoadingChecklists = false
+      this.errorMessage = ''
+      this.memberErrorMessage = ''
+    },
+
     setCurrentUser(user) {
       this.currentUserId = user?.id ?? null
     },
@@ -535,6 +557,7 @@ export const useWorkspaceDashboardStore = defineStore('workspaceDashboard', {
       } catch (error) {
         this.boards = asArray(workspace?.boards ?? [])
       }
+      await this.loadLabels()
       return workspace
     },
 
@@ -656,20 +679,34 @@ export const useWorkspaceDashboardStore = defineStore('workspaceDashboard', {
       }
     },
 
+    async enrichCardsWithLabels(cards) {
+      return Promise.all(cards.map(async (card) => {
+        if (Array.isArray(card?.labels) && card.labels.length) return card
+        try {
+          const labels = asArray(await getCardLabelsApi(card.id))
+          return { ...card, labels }
+        } catch {
+          return card
+        }
+      }))
+    },
+
     async loadBoardCards(boardId) {
       if (!boardId) return []
       this.errorMessage = ''
       try {
         const workspaceSlug = this.workspaceSlug || this.selectedSlug
         const cards = asArray(unwrap(await getBoardCardsApi(workspaceSlug, boardId)))
+        const enriched = await this.enrichCardsWithLabels(cards)
         const index = this.boards.findIndex((board) => String(board?.id ?? board?.uuid) === String(boardId))
         if (index >= 0) {
           this.boards[index] = {
             ...this.boards[index],
-            cards,
+            cards: enriched,
           }
         }
-        return cards
+        await this.loadStatuses(boardId)
+        return enriched
       } catch (error) {
         return []
       }
@@ -767,7 +804,9 @@ export const useWorkspaceDashboardStore = defineStore('workspaceDashboard', {
       this.isLoadingLabels = true
       this.labelError = ''
       try {
-        this.labels = asArray(await getLabelsApi())
+        const slug = this.workspaceSlug
+        if (!slug) throw new Error('Workspace slug is required.')
+        this.labels = asArray(await getLabelsApi(slug))
       } catch (error) {
         this.labelError = error instanceof Error ? error.message : 'Failed to load labels.'
       } finally {
@@ -778,7 +817,12 @@ export const useWorkspaceDashboardStore = defineStore('workspaceDashboard', {
     async createLabel(payload) {
       this.labelError = ''
       try {
-        await createLabelApi(labelPayload(payload))
+        const slug = this.workspaceSlug
+        if (!slug) throw new Error('Workspace slug is required.')
+        await createLabelApi(slug, {
+          ...labelPayload(payload),
+          workspace_id: this.workspaceId,
+        })
         await this.loadLabels()
       } catch (error) {
         this.labelError = error instanceof Error ? error.message : 'Failed to create label.'
@@ -790,7 +834,12 @@ export const useWorkspaceDashboardStore = defineStore('workspaceDashboard', {
       if (!labelId) return
       this.labelError = ''
       try {
-        await updateLabelApi(labelId, labelPayload(payload))
+        const slug = this.workspaceSlug
+        if (!slug) throw new Error('Workspace slug is required.')
+        await updateLabelApi(slug, labelId, {
+          ...labelPayload(payload),
+          workspace_id: this.workspaceId,
+        })
         await this.loadLabels()
       } catch (error) {
         this.labelError = error instanceof Error ? error.message : 'Failed to update label.'
@@ -802,10 +851,71 @@ export const useWorkspaceDashboardStore = defineStore('workspaceDashboard', {
       if (!labelId) return
       this.labelError = ''
       try {
-        await deleteLabelApi(labelId)
+        const slug = this.workspaceSlug
+        if (!slug) throw new Error('Workspace slug is required.')
+        await deleteLabelApi(slug, labelId)
         await this.loadLabels()
       } catch (error) {
         this.labelError = error instanceof Error ? error.message : 'Failed to delete label.'
+        throw error
+      }
+    },
+
+    async loadStatuses(boardId) {
+      if (!boardId) return
+      this.isLoadingStatuses = true
+      this.statusError = ''
+      try {
+        const slug = this.workspaceSlug
+        if (!slug) throw new Error('Workspace slug is required.')
+        this.statuses = asArray(await getStatusesApi(slug, boardId))
+      } catch (error) {
+        this.statusError = error instanceof Error ? error.message : 'Failed to load statuses.'
+      } finally {
+        this.isLoadingStatuses = false
+      }
+    },
+
+    async createStatus(boardId, payload) {
+      this.statusError = ''
+      try {
+        const slug = this.workspaceSlug
+        if (!slug) throw new Error('Workspace slug is required.')
+        await createStatusApi(slug, boardId, {
+          ...payload,
+          board_id: boardId,
+        })
+        await this.loadStatuses(boardId)
+      } catch (error) {
+        this.statusError = error instanceof Error ? error.message : 'Failed to create status.'
+        throw error
+      }
+    },
+
+    async updateStatus(boardId, statusId, payload) {
+      if (!statusId) return
+      this.statusError = ''
+      try {
+        const slug = this.workspaceSlug
+        if (!slug) throw new Error('Workspace slug is required.')
+        await updateStatusApi(slug, boardId, statusId, payload)
+        await this.loadStatuses(boardId)
+      } catch (error) {
+        this.statusError = error instanceof Error ? error.message : 'Failed to update status.'
+        throw error
+      }
+    },
+
+    async deleteStatus(boardId, statusId) {
+      if (!statusId) return
+      this.statusError = ''
+      try {
+        const slug = this.workspaceSlug
+        if (!slug) throw new Error('Workspace slug is required.')
+        await deleteStatusApi(slug, boardId, statusId)
+        await this.loadStatuses(boardId)
+      } catch (error) {
+        this.statusError = error instanceof Error ? error.message : 'Failed to delete status.'
         throw error
       }
     },

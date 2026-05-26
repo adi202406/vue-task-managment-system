@@ -66,7 +66,7 @@ async function captureToken() {
     const { data } = await api.get('/user', {
       headers: { Authorization: `Bearer ${token}` },
     })
-    authStore.user = data?.data ?? data
+    authStore.updateUser(data?.data ?? data)
     const target = resolveRedirectTarget(payload)
     await router.replace(target)
   } catch (error) {

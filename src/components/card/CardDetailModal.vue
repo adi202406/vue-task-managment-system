@@ -1,10 +1,17 @@
 <script setup>
-import { reactive, watch } from 'vue'
+import { computed, nextTick, reactive, watch } from 'vue'
 import IconGlyph from '../dashboard/IconGlyph.vue'
 import CardLabelManager from './CardLabelManager.vue'
 import CardAssigneeManager from './CardAssigneeManager.vue'
 import CardChecklistManager from './CardChecklistManager.vue'
-import { useWorkspaceDashboardStore } from '../../stores/workspaceDashboard'
+import { useWorkspaceDashboardStore } from '@/stores/workspaceDashboard'
+
+const SECTION_IDS = {
+  Members: 'section-members',
+  Labels: 'section-labels',
+  Checklist: 'section-checklist',
+  Dates: 'section-dates',
+}
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -23,6 +30,12 @@ const form = reactive({
   description: '',
   due_date: '',
   position: 0,
+  status_id: null,
+})
+
+const statusName = computed(() => {
+  const found = dashboardStore.statuses.find((s) => String(s.id) === String(form.status_id))
+  return found?.name || 'Uncategorized'
 })
 
 function dateValue(value) {
@@ -36,6 +49,7 @@ function fillForm(card) {
   form.description = card?.description === 'Detail pekerjaan belum ditambahkan.' ? '' : card?.description || ''
   form.due_date = dateValue(card?.due || card?.raw?.due_date || '')
   form.position = Number(card?.raw?.position ?? card?.position ?? 0)
+  form.status_id = card?.raw?.status_id ?? card?.status_id ?? null
 }
 
 watch(() => props.card, (card) => {
@@ -54,6 +68,17 @@ function getBoardMembers() {
   return props.board?.rawMembers || []
 }
 
+function scrollToSection(sectionId) {
+  nextTick(() => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+function handleSidebarClick(action) {
+  const id = SECTION_IDS[action]
+  if (id) scrollToSection(id)
+}
+
 function handleClose() {
   emit('close')
 }
@@ -65,6 +90,7 @@ async function handleSave() {
     description: form.description || null,
     due_date: form.due_date || null,
     position: form.position,
+    status_id: form.status_id || null,
   })
 }
 
@@ -97,7 +123,7 @@ function handleDelete() {
                   />
                 </div>
                 <p class="mt-1 text-xs text-slate-400">
-                  in list <span class="font-semibold text-blue-300">{{ board?.columnLabel || board?.title }}</span>
+                  in list <span class="font-semibold text-blue-300">{{ statusName || board?.title }}</span>
                 </p>
               </div>
               <button class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-white/[0.06] hover:text-white" type="button" @click="handleClose">
@@ -106,12 +132,14 @@ function handleDelete() {
             </div>
 
             <div class="mt-6 grid gap-5 sm:grid-cols-2">
-              <CardAssigneeManager
-                :board-id="board?.id"
-                :card-id="card?.id"
-                :current-assignees="getCurrentAssignees()"
-                :board-members="getBoardMembers()"
-              />
+              <div id="section-members">
+                <CardAssigneeManager
+                  :board-id="board?.id"
+                  :card-id="card?.id"
+                  :current-assignees="getCurrentAssignees()"
+                  :board-members="getBoardMembers()"
+                />
+              </div>
               <CardLabelManager
                 :board-id="board?.id"
                 :card-id="card?.id"
@@ -127,7 +155,24 @@ function handleDelete() {
               Loading card detail...
             </div>
 
-            <div class="mt-6 grid gap-4 sm:grid-cols-2">
+            <div id="section-dates" class="mt-6 grid gap-4 sm:grid-cols-3">
+              <div>
+                <label class="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500" for="card-detail-status">Status</label>
+                <select
+                  v-model="form.status_id"
+                  id="card-detail-status"
+                  class="w-full rounded-lg border border-white/10 bg-[#0a1020] px-3 py-2 text-sm text-white outline-none transition focus:border-blue-500"
+                >
+                  <option :value="null">Uncategorized</option>
+                  <option
+                    v-for="status in dashboardStore.statuses"
+                    :key="status.id"
+                    :value="status.id"
+                  >
+                    {{ status.name }}
+                  </option>
+                </select>
+              </div>
               <div>
                 <label class="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500" for="card-detail-due-date">Due Date</label>
                 <input
@@ -164,16 +209,24 @@ function handleDelete() {
               ></textarea>
             </section>
 
-            <CardChecklistManager
-              :board-id="board?.id"
-              :card-id="card?.id"
-            />
+            <div id="section-checklist">
+              <CardChecklistManager
+                :board-id="board?.id"
+                :card-id="card?.id"
+              />
+            </div>
           </section>
 
           <aside class="hidden w-48 shrink-0 border-l border-white/10 bg-blue-500/10 p-4 sm:block">
             <p class="mb-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Add to Card</p>
             <div class="space-y-2">
-              <button v-for="action in ['Members', 'Labels', 'Checklist', 'Dates', 'Attachment']" :key="action" class="flex h-9 w-full items-center gap-2 rounded-lg bg-blue-500/10 px-3 text-xs font-semibold text-slate-200 transition hover:bg-blue-500/20" type="button">
+              <button
+                v-for="action in ['Members', 'Labels', 'Checklist', 'Dates']"
+                :key="action"
+                class="flex h-9 w-full items-center gap-2 rounded-lg bg-blue-500/10 px-3 text-xs font-semibold text-slate-200 transition hover:bg-blue-500/20"
+                type="button"
+                @click="handleSidebarClick(action)"
+              >
                 <IconGlyph :name="action === 'Members' ? 'users' : action === 'Dates' ? 'calendar' : 'template'" class="h-4 w-4" />
                 {{ action }}
               </button>

@@ -75,7 +75,7 @@ onMounted(async () => {
         const { data } = await api.get('/user', {
           headers: { Authorization: `Bearer ${token}` },
         })
-        authStore.user = data?.data ?? data
+        authStore.updateUser(data?.data ?? data)
       } else {
         await authStore.fetchUser()
       }

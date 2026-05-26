@@ -1,7 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import IconGlyph from '../dashboard/IconGlyph.vue'
-import { useWorkspaceDashboardStore } from '../../stores/workspaceDashboard'
+import { useWorkspaceDashboardStore } from '@/stores/workspaceDashboard'
+import { getInitials } from '@/utils/helpers'
 
 const props = defineProps({
   boardId: { type: [Number, String], required: true },
@@ -24,7 +25,7 @@ function memberName(member) {
 }
 
 function memberInitials(member) {
-  return member?.initials || member?.name?.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() || 'ME'
+  return member?.initials || getInitials(member?.name, 'ME')
 }
 
 function memberAvatar(member) {
@@ -35,13 +36,17 @@ async function assign(userId) {
   try {
     await dashboardStore.assignUserToCard(props.boardId, props.cardId, userId)
     showPicker.value = false
-  } catch { }
+  } catch (error) {
+    console.error('Failed to assign user:', error)
+  }
 }
 
 async function remove(userId) {
   try {
     await dashboardStore.removeAssigneeFromCard(props.boardId, props.cardId, userId)
-  } catch { }
+  } catch (error) {
+    console.error('Failed to remove assignee:', error)
+  }
 }
 </script>
 

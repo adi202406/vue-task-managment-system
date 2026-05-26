@@ -1,11 +1,9 @@
 <script setup>
+import { computed } from 'vue'
 import IconGlyph from './IconGlyph.vue'
+import { getInitials } from '@/utils/helpers'
 
 const props = defineProps({
-  favoriteBoards: {
-    type: Array,
-    default: () => [],
-  },
   workspace: {
     type: Object,
     required: true,
@@ -26,11 +24,8 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'open-profile', 'navigate'])
 
-import { computed } from 'vue'
-
 const navItems = computed(() => [
   { id: 'workspaces', name: 'Workspaces', icon: 'home' },
-  { id: 'labels', name: 'Labels', icon: 'template' },
   { id: 'notifications', name: 'Notifications', icon: 'bell', badge: 8 },
 ])
 </script>
@@ -45,7 +40,7 @@ const navItems = computed(() => [
         <span class="text-lg font-black">T</span>
       </div>
       <span class="text-xl font-semibold tracking-tight text-white">Taskly</span>
-      <button v-if="mobile" class="ml-auto grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-sky-400/40 hover:text-sky-300" type="button" aria-label="Close sidebar" @click="$emit('close')">
+      <button v-if="mobile" class="ml-auto grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-sky-400/40 hover:text-sky-300" type="button" aria-label="Close sidebar" @click="emit('close')">
         x
       </button>
     </div>
@@ -68,10 +63,10 @@ const navItems = computed(() => [
       </button>
     </nav>
 
-    <button class="mt-auto flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-left transition hover:border-sky-400/30 hover:bg-white/[0.06]" type="button" @click="$emit('open-profile')">
+    <button class="mt-auto flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-left transition hover:border-sky-400/30 hover:bg-white/[0.06]" type="button" @click="emit('open-profile')">
       <div class="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-orange-200 to-slate-700 text-sm font-black text-white">
         <img v-if="user?.avatar" :src="user.avatar" :alt="user?.name || 'Profile'" class="h-full w-full object-cover" />
-        <span v-else>{{ (user?.name || workspace.owner || 'JL').split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase() }}</span>
+        <span v-else>{{ getInitials(user?.name || workspace.owner, 'JL') }}</span>
       </div>
       <div class="min-w-0">
         <p class="truncate text-sm font-semibold text-white">{{ user?.name || workspace.owner }}</p>

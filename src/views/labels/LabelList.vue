@@ -1,7 +1,7 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import IconGlyph from '../../components/dashboard/IconGlyph.vue'
-import { useWorkspaceDashboardStore } from '../../stores/workspaceDashboard'
+import { computed, ref } from 'vue'
+import IconGlyph from '@/components/dashboard/IconGlyph.vue'
+import { useWorkspaceDashboardStore } from '@/stores/workspaceDashboard'
 import LabelFormModal from './LabelFormModal.vue'
 import LabelDeleteConfirm from './LabelDeleteConfirm.vue'
 
@@ -15,10 +15,6 @@ const successMessage = ref('')
 
 const labels = computed(() => dashboardStore.labels)
 const isLoading = computed(() => dashboardStore.isLoadingLabels)
-
-onMounted(() => {
-  dashboardStore.loadLabels()
-})
 
 function openCreateModal() {
   selectedLabel.value = null

@@ -1,5 +1,6 @@
 <script setup>
 import IconGlyph from './IconGlyph.vue'
+import { getInitials } from '@/utils/helpers'
 
 defineProps({
   user: {
@@ -36,7 +37,7 @@ defineEmits(['open-sidebar', 'toggle-profile'])
           <span class="relative h-11 w-11 rounded-full border border-white/10 bg-gradient-to-br from-orange-200 to-slate-700 transition hover:border-sky-400/40">
             <img v-if="user?.avatar" :src="user.avatar" :alt="user?.name || 'Profile'" class="h-full w-full rounded-full object-cover" />
             <span v-else class="grid h-full w-full place-items-center text-sm font-black text-white">
-              {{ (user?.name || 'Jackson Lee').split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase() }}
+              {{ getInitials(user?.name, 'Jackson Lee') }}
             </span>
           </span>
           <IconGlyph name="chevron" class="hidden h-4 w-4 text-slate-300 sm:block" />

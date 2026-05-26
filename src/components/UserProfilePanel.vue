@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 
 import { getProfile, updatePassword, updateProfile } from '../services/profile'
 import { useAuthStore } from '../stores/auth'
+import { getInitials } from '../utils/helpers'
 
 const authStore = useAuthStore()
 
@@ -25,20 +26,9 @@ const pwForm = reactive({ current_password: '', password: '', password_confirmat
 const showPw = reactive({ current: false, new: false, confirm: false })
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
-/**
- * Deteksi OAuth user: user login via Google jika field `google_id` pada
- * tabel users bernilai non-null dan non-empty.
- */
-// const isOAuthUser = computed(() =>
-//   !!profile.value?.google_id
-// )
-
-const isOAuthUser = computed(() => {
-  console.log('profile:', profile.value)
-  console.log('google_id:', profile.value?.google_id)
-
-  return !!profile.value?.google_id
-})
+const isOAuthUser = computed(() =>
+  !!profile.value?.google_id
+)
 
 
 const displayAvatar = computed(() =>
@@ -47,10 +37,7 @@ const displayAvatar = computed(() =>
   null
 )
 
-const initials = computed(() => {
-  const name = profile.value?.name || ''
-  return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'
-})
+const initials = computed(() => getInitials(profile.value?.name, '?'))
 
 // ─── Load profile ─────────────────────────────────────────────────────────────
 async function loadProfile() {

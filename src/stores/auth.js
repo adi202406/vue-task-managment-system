@@ -8,6 +8,7 @@ import {
   logout as logoutRequest,
   register as registerRequest,
 } from '../services/auth'
+import { useWorkspaceDashboardStore } from './workspaceDashboard'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -61,6 +62,8 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = null
       this.initialized = true
+
+      useWorkspaceDashboardStore().reset()
     },
 
     updateUser(user) {

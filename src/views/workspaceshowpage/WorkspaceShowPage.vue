@@ -2,15 +2,23 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import ForbiddenPage from '../../components/ForbiddenPage.vue'
-import NotFoundPage from '../../components/NotFoundPage.vue'
-import IconGlyph from '../../components/dashboard/IconGlyph.vue'
-import UserProfilePanel from '../../components/UserProfilePanel.vue'
-import BoardShowView from '../../components/dashboard/BoardShowView.vue'
-import CardDetailModal from '../../components/card/CardDetailModal.vue'
+import ForbiddenPage from '@/components/ForbiddenPage.vue'
+import NotFoundPage from '@/components/NotFoundPage.vue'
+import IconGlyph from '@/components/dashboard/IconGlyph.vue'
+import UserProfilePanel from '@/components/UserProfilePanel.vue'
+import BoardShowView from '@/components/dashboard/BoardShowView.vue'
+import CardDetailModal from '@/components/card/CardDetailModal.vue'
 import LabelList from '../labels/LabelList.vue'
-import { useAuthStore } from '../../stores/auth'
-import { useWorkspaceDashboardStore } from '../../stores/workspaceDashboard'
+import LabelFormModal from '../labels/LabelFormModal.vue'
+import LabelDeleteConfirm from '../labels/LabelDeleteConfirm.vue'
+import StatusFormModal from '@/components/dashboard/StatusFormModal.vue'
+import StatusDeleteConfirm from '@/components/dashboard/StatusDeleteConfirm.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useWorkspaceDashboardStore } from '@/stores/workspaceDashboard'
+import { useCardLabels } from '@/composables/useCardLabels'
+import { getInitials } from '@/utils/helpers'
+
+const { cardLabelList } = useCardLabels()
 
 const route = useRoute()
 const router = useRouter()
@@ -44,34 +52,10 @@ const filteredBoards = computed(() => {
   return sortedBoards.filter((b) => b.title.toLowerCase().includes(searchQuery.value.toLowerCase()))
 })
 
-const fallbackLabels = [
-  { id: 'todo', name: 'To Do', color: '#64748b', description: 'Ready to start' },
-  { id: 'in-progress', name: 'In Progress', color: '#3b82f6', description: 'Work in progress' },
-  { id: 'complete', name: 'Complete', color: '#10b981', description: 'Finished work' },
-  { id: 'urgent', name: 'Urgent', color: '#ef4444', description: 'Critical path items' },
-  { id: 'review', name: 'In Review', color: '#6d5dfc', description: 'Pending QA approval' },
-]
-
 const selectedBoard = computed(() => {
   if (!isBoardShowRoute.value) return null
   return boards.value.find((board) => String(board.id) === String(selectedBoardId.value)) || null
 })
-
-function cardLabelList(card, board, index) {
-  const labels = Array.isArray(card?.labels) ? card.labels : []
-  if (labels.length) {
-    return labels.map((label) => ({
-      id: label?.id ?? label?.name,
-      name: label?.name || label?.title || 'Label',
-      color: label?.color || board.color || '#3b82f6',
-      description: label?.description || '',
-    }))
-  }
-
-  const status = String(card?.status || card?.state || card?.label || '').toLowerCase().replace(/\s+/g, '-')
-  const statusLabel = fallbackLabels.find((label) => label.id === status || label.name.toLowerCase().replace(/\s+/g, '-') === status)
-  return [statusLabel || fallbackLabels[index % fallbackLabels.length]]
-}
 
 const boardCardsCount = computed(() => {
   if (!selectedBoard.value) return 0
@@ -82,7 +66,6 @@ const selectedBoardCards = computed(() => {
   if (!selectedBoard.value) return []
   return Array.isArray(selectedBoard.value.cards) ? selectedBoard.value.cards : []
 })
-
 
 async function openBoard(board) {
   if (!board?.id) return
@@ -123,14 +106,111 @@ function normalizeCardForDetail(card, fallback = {}) {
 function resetNewCardForm() {
   newCardForm.title = ''
   newCardForm.description = ''
-  newCardForm.due_date = ''
-  newCardForm.position = selectedBoardCards.value.length + 1
+  newCardForm.selectedLabelIds = []
+  newCardForm.statusId = null
   cardFormError.value = ''
 }
 
-function openCreateCard() {
+function toggleLabelSelection(labelId) {
+  const idx = newCardForm.selectedLabelIds.indexOf(labelId)
+  if (idx === -1) {
+    newCardForm.selectedLabelIds.push(labelId)
+  } else {
+    newCardForm.selectedLabelIds.splice(idx, 1)
+  }
+}
+
+const showCreateLabelModal = ref(false)
+const showDeleteLabelConfirm = ref(false)
+const deletingLabel = ref(null)
+
+const showCreateStatusModal = ref(false)
+const showDeleteStatusConfirm = ref(false)
+const deletingStatus = ref(null)
+
+async function onLabelModalSave(payload) {
+  try {
+    await dashboardStore.createLabel(payload)
+    const created = dashboardStore.labels.find(
+      (l) => l.name === payload.name
+    )
+    if (created && !newCardForm.selectedLabelIds.includes(created.id)) {
+      newCardForm.selectedLabelIds.push(created.id)
+    }
+    if (selectedBoard.value?.id) {
+      await dashboardStore.loadBoardCards(selectedBoard.value.id)
+    }
+    showCreateLabelModal.value = false
+  } catch (error) {
+    console.error('Failed to create label:', error)
+  }
+}
+
+function openCreateCard(column) {
   resetNewCardForm()
+  if (column?.id && column.id !== 'uncategorized') {
+    newCardForm.statusId = String(column.id)
+  }
   showCreateCardModal.value = true
+}
+
+function confirmDeleteLabel(label) {
+  deletingLabel.value = label
+  showDeleteLabelConfirm.value = true
+}
+
+async function executeDeleteLabel() {
+  if (!deletingLabel.value?.id) return
+  try {
+    await dashboardStore.deleteLabel(deletingLabel.value.id)
+    if (selectedBoard.value?.id) {
+      await dashboardStore.loadBoardCards(selectedBoard.value.id)
+    }
+    successMessage.value = `Label "${deletingLabel.value.name}" berhasil dihapus.`
+    setTimeout(() => { successMessage.value = '' }, 3000)
+  } catch (error) {
+    console.error('Failed to delete label:', error)
+  } finally {
+    showDeleteLabelConfirm.value = false
+    deletingLabel.value = null
+  }
+}
+
+function openAddLabel() {
+  showCreateLabelModal.value = true
+}
+
+function openAddStatus() {
+  showCreateStatusModal.value = true
+}
+
+async function onStatusModalSave(payload) {
+  if (!selectedBoard.value?.id) return
+  try {
+    await dashboardStore.createStatus(selectedBoard.value.id, payload)
+    showCreateStatusModal.value = false
+  } catch (error) {
+    console.error('Failed to create status:', error)
+  }
+}
+
+function confirmDeleteStatus(status) {
+  deletingStatus.value = status
+  showDeleteStatusConfirm.value = true
+}
+
+async function executeDeleteStatus() {
+  if (!deletingStatus.value?.id || !selectedBoard.value?.id) return
+  try {
+    await dashboardStore.deleteStatus(selectedBoard.value.id, deletingStatus.value.id)
+    successMessage.value = `Status "${deletingStatus.value.name}" berhasil dihapus.`
+    setTimeout(() => { successMessage.value = '' }, 3000)
+  } catch (error) {
+    console.error('Failed to delete status:', error)
+  } finally {
+    showDeleteStatusConfirm.value = false
+    deletingStatus.value = null
+  }
 }
 
 async function openCardDetail(card, board) {
@@ -138,7 +218,7 @@ async function openCardDetail(card, board) {
   selectedCardBoard.value = board
   cardDetailError.value = ''
   isLoadingCardDetail.value = true
-  dashboardStore.loadChecklists()
+  await dashboardStore.loadChecklists()
   try {
     const detail = await dashboardStore.loadCard(selectedBoard.value?.id, card.id)
     if (detail) {
@@ -179,8 +259,8 @@ const newBoardForm = reactive({
 const newCardForm = reactive({
   title: '',
   description: '',
-  due_date: '',
-  position: '',
+  selectedLabelIds: [],
+  statusId: null,
 })
 const editBoardForm = reactive({
   id: null,
@@ -232,12 +312,21 @@ async function handleCreateCard() {
   isCreatingCard.value = true
   cardFormError.value = ''
   try {
-    await dashboardStore.createCard(selectedBoard.value.id, {
+    const today = new Date().toISOString().slice(0, 10)
+    const position = selectedBoardCards.value.length + 1
+    const createdCard = await dashboardStore.createCard(selectedBoard.value.id, {
       title: newCardForm.title,
       description: newCardForm.description,
-      due_date: newCardForm.due_date,
-      position: newCardForm.position,
+      due_date: today,
+      position,
+      status_id: newCardForm.statusId || undefined,
     })
+    if (createdCard?.id && newCardForm.selectedLabelIds.length) {
+      for (const labelId of newCardForm.selectedLabelIds) {
+        await dashboardStore.attachLabelToCard(selectedBoard.value.id, createdCard.id, labelId)
+      }
+      await dashboardStore.loadBoardCards(selectedBoard.value.id)
+    }
     showCreateCardModal.value = false
     resetNewCardForm()
     successMessage.value = 'Card berhasil dibuat.'
@@ -370,8 +459,8 @@ async function handleBoardDrop(event, targetBoard, targetIndex) {
 async function toggleFavorite(boardId) {
   try {
     await dashboardStore.toggleFavoriteBoard(boardId)
-  } catch (error) {
-    console.error('Failed to toggle favorite', error)
+  } catch {
+    // non-critical, silently ignore
   }
 }
 
@@ -453,8 +542,8 @@ async function handleInviteMember() {
 async function handleRemoveMember(userId) {
   try {
     await dashboardStore.removeMember(userId)
-  } catch (error) {
-    console.error('Failed to remove member', error)
+  } catch {
+    // non-critical, silently ignore
   }
 }
 
@@ -473,8 +562,11 @@ function clickBoard(board) {
   }, 3000)
 }
 
+let loadGeneration = 0
+
 // Load workspace data
 async function loadWorkspace() {
+  const generation = ++loadGeneration
   const slug = route.params.slug
   if (!slug) {
     await router.replace({ name: 'workspaces.index' })
@@ -486,6 +578,7 @@ async function loadWorkspace() {
   dashboardStore.isLoading = true
   try {
     await dashboardStore.loadWorkspace(slug)
+    if (generation !== loadGeneration) return
     const userId = authStore.user?.id
     const isActiveMember = userId && workspace.value.membersList.some((m) => String(m.id) === String(userId) && m.status === 'active')
     const isPublic = workspace.value.visibility === 'public'
@@ -494,9 +587,15 @@ async function loadWorkspace() {
     selectedBoardId.value = isBoardShowRoute.value ? route.params.boardId : null
     if (isBoardShowRoute.value && selectedBoardId.value && pageState.value === 'ready') {
       isLoadingBoardCards.value = true
-      await dashboardStore.loadBoardCards(selectedBoardId.value)
-      isLoadingBoardCards.value = false
+      try {
+        await dashboardStore.loadBoardCards(selectedBoardId.value)
+      } catch (e) {
+        console.error('Failed to load board cards:', e)
+      } finally {
+        isLoadingBoardCards.value = false
+      }
     }
+    if (generation !== loadGeneration) return
     initWorkspaceForm()
   } catch (error) {
     if (error?.status === 403) {
@@ -600,7 +699,7 @@ watch(() => [route.params.slug, route.params.boardId], loadWorkspace)
           >
             <img v-if="authStore.user?.avatar" :src="authStore.user.avatar" :alt="authStore.user.name" class="h-full w-full rounded-full object-cover" />
             <span v-else class="grid h-full w-full place-items-center text-xs font-black text-white">
-              {{ (authStore.user?.name || 'ME').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() }}
+              {{ getInitials(authStore.user?.name, 'ME') }}
             </span>
           </button>
         </div>
@@ -613,7 +712,7 @@ watch(() => [route.params.slug, route.params.boardId], loadWorkspace)
           <!-- Workspace Info Block -->
           <div class="flex items-center gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5 mb-6">
             <div class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-blue-600/90 text-white font-bold text-lg shadow-sm">
-              {{ workspace.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() }}
+              {{ getInitials(workspace.name) }}
             </div>
             <div class="min-w-0">
               <p class="truncate text-sm font-semibold text-white leading-tight">{{ workspace.name }}</p>
@@ -626,6 +725,7 @@ watch(() => [route.params.slug, route.params.boardId], loadWorkspace)
             <button
               v-for="item in [
                 { id: 'boards', name: 'Boards', icon: 'grid' },
+                { id: 'labels', name: 'Labels', icon: 'template' },
                 { id: 'members', name: 'Members', icon: 'users' },
                 { id: 'settings', name: 'Workspace Settings', icon: 'template' },
                 { id: 'views', name: 'Workspace Views', icon: 'monitor' },
@@ -816,9 +916,15 @@ watch(() => [route.params.slug, route.params.boardId], loadWorkspace)
                 v-if="selectedBoard"
                 :board="selectedBoard"
                 :is-loading="isLoadingBoardCards"
+                :statuses="dashboardStore.statuses"
+                :all-labels="dashboardStore.labels"
                 @back="closeBoard"
                 @add-card="openCreateCard"
                 @card-click="(card, column) => openCardDetail(card, column)"
+                @delete-status="confirmDeleteStatus"
+                @add-status="openAddStatus"
+                @delete-label="confirmDeleteLabel"
+                @add-label="openAddLabel"
               />
             </div>
 
@@ -859,7 +965,7 @@ watch(() => [route.params.slug, route.params.boardId], loadWorkspace)
                       <!-- Avatar -->
                       <div class="h-10 w-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center overflow-hidden text-xs font-black text-white shrink-0">
                         <img v-if="member.avatar" :src="member.avatar" :alt="member.name" class="h-full w-full object-cover" />
-                        <span v-else>{{ member.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() }}</span>
+                        <span v-else>{{ getInitials(member.name) }}</span>
                       </div>
                       <div>
                         <h3 class="text-sm font-bold text-white">{{ member.name }}</h3>
@@ -1241,26 +1347,54 @@ watch(() => [route.params.slug, route.params.boardId], loadWorkspace)
                   ></textarea>
                 </div>
 
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label class="mb-1.5 block text-sm font-semibold text-slate-300" for="card-due-date-input">Due Date</label>
-                    <input
-                      v-model="newCardForm.due_date"
-                      id="card-due-date-input"
-                      type="date"
-                      class="w-full rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none transition focus:border-blue-500"
-                    />
+                <div>
+                  <label class="mb-1.5 block text-sm font-semibold text-slate-300">Status</label>
+                  <div v-if="dashboardStore.statuses.length" class="flex flex-wrap gap-2">
+                    <button
+                      v-for="status in dashboardStore.statuses"
+                      :key="status.id"
+                      type="button"
+                      :class="[
+                        'rounded-md px-3 py-1 text-xs font-semibold text-white transition hover:scale-105',
+                        String(newCardForm.statusId) === String(status.id)
+                          ? 'ring-2 ring-white/60 ring-offset-1 ring-offset-[rgba(5,10,24,0.96)]'
+                          : 'opacity-60 hover:opacity-100'
+                      ]"
+                      :style="{ backgroundColor: status.color }"
+                      @click="newCardForm.statusId = String(status.id)"
+                    >
+                      {{ status.name }}
+                    </button>
                   </div>
-                  <div>
-                    <label class="mb-1.5 block text-sm font-semibold text-slate-300" for="card-position-input">Position</label>
-                    <input
-                      v-model.number="newCardForm.position"
-                      id="card-position-input"
-                      min="0"
-                      type="number"
-                      class="w-full rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none transition focus:border-blue-500"
-                    />
+                  <p v-else class="text-xs text-slate-500">No statuses available. Create one from the board.</p>
+                </div>
+
+                <div>
+                  <label class="mb-1.5 block text-sm font-semibold text-slate-300">Labels</label>
+                  <div v-if="dashboardStore.labels.length" class="flex flex-wrap gap-2">
+                    <button
+                      v-for="label in dashboardStore.labels"
+                      :key="label.id"
+                      type="button"
+                      :class="[
+                        'rounded-md px-3 py-1 text-xs font-semibold text-white transition hover:scale-105',
+                        newCardForm.selectedLabelIds.includes(label.id)
+                          ? 'ring-2 ring-white/60 ring-offset-1 ring-offset-[rgba(5,10,24,0.96)]'
+                          : 'opacity-60 hover:opacity-100'
+                      ]"
+                      :style="{ backgroundColor: label.color }"
+                      @click="toggleLabelSelection(label.id)"
+                    >
+                      {{ label.name }}
+                    </button>
                   </div>
+                  <button
+                    class="mt-2 inline-flex h-7 items-center gap-1 rounded-lg border border-dashed border-white/10 bg-white/[0.02] px-2 text-xs font-semibold text-slate-400 transition hover:border-blue-500/40 hover:text-blue-200"
+                    type="button"
+                    @click="showCreateLabelModal = true"
+                  >
+                    New Label
+                  </button>
                 </div>
               </div>
 
@@ -1371,6 +1505,38 @@ watch(() => [route.params.slug, route.params.boardId], loadWorkspace)
           </div>
         </transition>
       </teleport>
+
+      <!-- 5. Create Label Modal (standalone, from board label bar) -->
+      <LabelFormModal
+        :show="showCreateLabelModal"
+        :label="null"
+        @save="onLabelModalSave"
+        @close="showCreateLabelModal = false"
+      />
+
+      <!-- 6. Delete Label Confirm (from board column header) -->
+      <LabelDeleteConfirm
+        :show="showDeleteLabelConfirm"
+        :label="deletingLabel"
+        @close="showDeleteLabelConfirm = false; deletingLabel = null"
+        @confirm="executeDeleteLabel"
+      />
+
+      <!-- 7. Create Status Modal -->
+      <StatusFormModal
+        :show="showCreateStatusModal"
+        :status="null"
+        @save="onStatusModalSave"
+        @close="showCreateStatusModal = false"
+      />
+
+      <!-- 8. Delete Status Confirm -->
+      <StatusDeleteConfirm
+        :show="showDeleteStatusConfirm"
+        :status="deletingStatus"
+        @close="showDeleteStatusConfirm = false; deletingStatus = null"
+        @confirm="executeDeleteStatus"
+      />
     </div>
   </template>
 </template>
